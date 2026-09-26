@@ -1,6 +1,6 @@
 # Current Grease
 
-This document records the evidence-backed Grease state after reconciling the August 2026 conversation history with `isomorphisms/grease`, the Grease branches of `isomorphisms/oils`, and the later `ish` / Odriç split.
+This document preserves the reconciliation of the August 2026 conversation history with Grease, the Grease branches of Oils, and the later `ish` / Odriç split. Its branch heads and receipt hashes below are historical snapshots, not a live source inventory. Current repositories are [`dilapidated-shed/grease`](https://github.com/dilapidated-shed/grease) and [`dilapidated-shed/oils`](https://github.com/dilapidated-shed/oils); older identities remain in the historical record.
 
 It is intentionally narrower than a language design document. A branch name is not treated as a decision, and an old experiment is not promoted merely because it exists.
 
@@ -8,7 +8,9 @@ It is intentionally narrower than a language design document. A branch name is n
 
 Grease is the working Oils/YSH-derived shell-language line. Oils/YSH behavior remains the inherited reference unless Grease deliberately changes it.
 
-The implemented Grease-specific language change on the current Oils line is readable boolean syntax:
+The current source pin is the top-level `source/` gitlink, checked by the [receipt workflow](../.github/workflows/grease-receipt.yml). Later implementation includes [native libc actions](NATIVE-LIBC.md), the [sensor command](../commands/sensors/README.md), and the [accelerometer inspection consumer](../examples/accelerometer-inspection.ysh). These additions do not retroactively extend any old receipt's scope.
+
+The original reconciled Grease-specific language change was readable boolean syntax:
 
 - `⟦ ... ⟧` enters the inherited `[[ ... ]]` condition path;
 - `∧` uses the inherited `&&` token path;
@@ -21,7 +23,9 @@ Grease also carries three conservative runtime/startup cleanups that remove work
 
 `ish` is now the intended new shell written in Odriç. It descends from the experience of Oils/YSH and Grease but does not inherit a compatibility contract. Grease therefore remains useful as the executable/reference predecessor and as an oracle for shell behavior while `ish` grows feature by feature. The plan to make Grease itself become the new Odriç-written shell is superseded by the separate `ish` line.
 
-## Decision ledger
+## Reconciliation decision ledger
+
+`CURRENT` below records decisions retained from that reconciliation; the exact source and branch heads are historical provenance. Later additions are linked above.
 
 | Class | Decision | Provenance |
 | --- | --- | --- |
@@ -49,7 +53,7 @@ ICKY was explored as a parser front end only. Its job was to retain glyph identi
 
 The recovered ICKY build remained blocked by unavailable `idris2`, so there is no current executable ICKY receipt to promote.
 
-## Oils branch archaeology
+## Oils branch archaeology (historical snapshot)
 
 Reference baseline: `15de8fd779569e6e3a9f5fcbfc00e7df0ebe0380`.
 
@@ -98,7 +102,7 @@ This gives a clean responsibility split:
 - `ish`: the new shell whose features are pulled into existence by small real programs;
 - Odriç: the native language/compiler line co-designed with `ish`.
 
-## Executable receipts
+## Executable receipts (historical scope)
 
 ### Canonical pinned current Grease source
 

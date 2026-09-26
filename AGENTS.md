@@ -2,8 +2,8 @@
 
 Apply the shared evidence and acceptance guardrails in
 `isomorphisms/ai-ci/AGENTS.md`. Before changing Grease, read
-[`docs/CURRENT-GREASE.md`](docs/CURRENT-GREASE.md); it is the evidence-backed
-statement of the current line.
+[`docs/CURRENT-GREASE.md`](docs/CURRENT-GREASE.md) for the language boundary and
+historical reconciliation, and the README for current implementation entry points.
 
 ## Do not promote archaeology into current design
 
@@ -53,6 +53,9 @@ lower layers inspectable when a task specifically requires them.
 Treat the `source/` submodule revision as material provenance. A successful run
 against another Oils revision, an old experiment, or a different pin is
 historical evidence only.
+
+Read the current pin from the gitlink; do not duplicate it as a moving "current"
+hash in prose. Keep exact hashes in historical receipts scoped to their own runs.
 
 Keep semantic tests distinct from unrelated publishing/infrastructure stages; a
 publisher failure does not retroactively make a passed language test fail, and
