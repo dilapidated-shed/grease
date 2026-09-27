@@ -1,0 +1,10 @@
+#!/usr/bin/env ysh
+
+proc noop {
+  true
+}
+
+for i in (0 .. 100000) {
+  noop
+}
+echo 100000
