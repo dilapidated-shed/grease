@@ -24,7 +24,7 @@ if test -z "${VAST_API_KEY:-}"; then
   exit 2
 fi
 
-var base_url = "${VAST_API_BASE_URL:-https://console.vast.ai}"
+base_url=${VAST_API_BASE_URL:-https://console.vast.ai}
 
 request() {
   var method = "$1"
