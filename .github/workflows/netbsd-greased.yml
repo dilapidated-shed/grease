@@ -39,6 +39,7 @@ jobs:
           repository: dilapidated-shed/oils
           ref: ${{ env.GREASE_D_REVISION }}
           path: d-source
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Check out exact Icky GDC source
