@@ -91,19 +91,28 @@ jobs:
 
             cp _bin/cxx-opt-sh/oils-for-unix "$package/oils-for-unix"
             chmod 755 "$package/oils-for-unix"
-            cat > "$package/grease" <<'EOF'
+
+            # Implementation names are stable.  The unqualified "grease"
+            # command is only the pointer to the preferred implementation.
+            cat > "$package/greasecpp" <<'EOF'
             #!/bin/sh
             here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
             exec "$here/oils-for-unix" ysh "$@"
             EOF
-            chmod 755 "$package/grease"
-            "$package/grease" -c 'echo grease-wrapper-ready'
+            chmod 755 "$package/greasecpp"
+            ln -s greasecpp "$package/grease"
+
+            "$package/greasecpp" -c 'echo greasecpp-wrapper-ready'
+            "$package/grease" -c 'echo grease-default-ready'
+            test "$(readlink "$package/grease")" = greasecpp
 
             {
               printf 'netbsd_uname='
               uname -a
               printf 'grease_source_revision=%s\n' '${{ steps.source_pin.outputs.revision }}'
               printf 'grease_repository_revision=%s\n' '${{ github.event.pull_request.head.sha || github.sha }}'
+              printf 'greasecpp_implementation=Oils/MyCPP C++\n'
+              printf 'grease_default=greasecpp\n'
             } > "$package/receipt.txt"
 
       - name: Archive NetBSD package
@@ -112,7 +121,9 @@ jobs:
         run: |
           set -euo pipefail
           test -x _/netbsd-package/oils-for-unix
-          test -x _/netbsd-package/grease
+          test -x _/netbsd-package/greasecpp
+          test -L _/netbsd-package/grease
+          test "$(readlink _/netbsd-package/grease)" = greasecpp
           tar -C _/netbsd-package -czf _/grease-netbsd-11-amd64.tar.gz .
           sha256sum _/grease-netbsd-11-amd64.tar.gz > _/grease-netbsd-11-amd64.tar.gz.sha256
           printf 'sha256=%s\n' "$(cut -d' ' -f1 _/grease-netbsd-11-amd64.tar.gz.sha256)" >> "$GITHUB_OUTPUT"
@@ -141,6 +152,12 @@ jobs:
           tag="netbsd-11-amd64-$short"
           cat > _/release-notes.txt <<EOF
           NetBSD 11 amd64 Grease runtime for SDF-style unprivileged installs.
+
+          This artifact contains the C++ implementation as `greasecpp`.
+          `grease` is a symlink to the currently preferred implementation;
+          in this artifact it points to `greasecpp`.  A D implementation will
+          be named `greased` and should replace that default only after it
+          passes the same acceptance checks.
 
           Grease repository commit: $GITHUB_SHA
           Pinned Oils-derived Grease source: $SOURCE_SHA
