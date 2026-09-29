@@ -25,6 +25,7 @@ jobs:
       NETBSD_TARGET: x86_64-unknown-netbsd
       ICK_REVISION: 05265916ae24cfeeb1f1e7120f2aa80f52e0a8cb
       GREASE_D_REVISION: d5ef8cad8a41600c8ab2699cd0572d45e79397e6
+      GREASE_D_BASE: c589aa679b6625eb9a124f5af637a7be454a27b0
     steps:
       - name: Check out exact Grease head
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -56,9 +57,9 @@ jobs:
           test "$(git -C d-source rev-parse HEAD)" = "$GREASE_D_REVISION"
           test "$(git -C .ick rev-parse HEAD)" = "$ICK_REVISION"
 
-          merge_base=$(git -C d-source merge-base "$GREASE_D_REVISION" grease/main)
-          test -n "$merge_base"
-          test "$(git -C d-source rev-list --count "$merge_base".."$GREASE_D_REVISION")" -gt 0
+          merge_base=$(git -C d-source merge-base "$GREASE_D_REVISION" "$GREASE_D_BASE")
+          test "$merge_base" = "$GREASE_D_BASE"
+          test "$(git -C d-source rev-list --count "$GREASE_D_BASE".."$GREASE_D_REVISION")" -gt 0
           test -f d-source/ysh/d/source/app.d
           test -f d-source/ysh/d/PORTING.md
 
@@ -199,7 +200,11 @@ jobs:
 
             "$greased" -c 'var x = 1; setvar x = 42'
 
-            actual=$("$greased" -c "var items = ['a b', 'c d']; var answer = 42; write @items; write \\$answer \\$[6 * 7] @[['x', 'y']]; echo s=\\$answer; echo \"value=\\$answer\"; write pre\\$answer-post")
+            program=$(cat <<'EOF'
+            var items = ['a b', 'c d']; var answer = 42; write @items; write $answer $[6 * 7] @[['x', 'y']]; echo s=$answer; echo "value=$answer"; write pre$answer-post
+            EOF
+            )
+            actual=$("$greased" -c "$program")
             expected=$(printf 'a b\nc d\n42\n42\nx\ny\ns=42\nvalue=42\npre42-post\n')
             test "$actual" = "$expected"
 
