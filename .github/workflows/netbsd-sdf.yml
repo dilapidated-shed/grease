@@ -150,25 +150,43 @@ jobs:
           command -v gh >/dev/null
           short=${GITHUB_SHA:0:12}
           tag="netbsd-9.3-amd64-$short"
-          cat > _/release-notes.txt <<EOF
+
+          {
+            cat <<'EOF'
           NetBSD 9.3 amd64 Grease runtime for SDF-style unprivileged installs.
 
           This artifact contains the C++ implementation as `greasecpp`.
           `grease` is a symlink to the currently preferred implementation;
-          in this artifact it points to `greasecpp`.  A D implementation will
+          in this artifact it points to `greasecpp`. A D implementation will
           be named `greased` and should replace that default only after it
           passes the same acceptance checks.
-
-          Grease repository commit: $GITHUB_SHA
-          Pinned Oils-derived Grease source: $SOURCE_SHA
-          Target: NetBSD 9.3 amd64
-          Artifact SHA-256: $ARTIFACT_SHA256
-
-          The binary was compiled and smoke-tested inside the NetBSD 9.3 VM job above.
           EOF
+            printf '\nGrease repository commit: %s\n' "$GITHUB_SHA"
+            printf 'Pinned Oils-derived Grease source: %s\n' "$SOURCE_SHA"
+            printf '%s\n' 'Target: NetBSD 9.3 amd64'
+            printf 'Artifact SHA-256: %s\n\n' "$ARTIFACT_SHA256"
+            printf '%s\n' 'The binary was compiled and smoke-tested inside the NetBSD 9.3 VM job above.'
+          } > _/release-notes.txt
 
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag"               _/grease-netbsd-9.3-amd64.tar.gz               _/grease-netbsd-9.3-amd64.tar.gz.sha256               --clobber
+            existing="$RUNNER_TEMP/existing-release"
+            rm -rf "$existing"
+            mkdir -p "$existing"
+            gh release download "$tag" \
+              --pattern 'grease-netbsd-9.3-amd64.tar.gz' \
+              --pattern 'grease-netbsd-9.3-amd64.tar.gz.sha256' \
+              --dir "$existing"
+            cmp _/grease-netbsd-9.3-amd64.tar.gz \
+              "$existing/grease-netbsd-9.3-amd64.tar.gz"
+            cmp _/grease-netbsd-9.3-amd64.tar.gz.sha256 \
+              "$existing/grease-netbsd-9.3-amd64.tar.gz.sha256"
+            printf '%s\n' 'PASS: existing commit-specific release bytes are identical; nothing was overwritten.'
           else
-            gh release create "$tag"               _/grease-netbsd-9.3-amd64.tar.gz               _/grease-netbsd-9.3-amd64.tar.gz.sha256               --target "$GITHUB_SHA"               --prerelease               --title "Grease NetBSD 9.3 amd64 $short"               --notes-file _/release-notes.txt
+            gh release create "$tag" \
+              _/grease-netbsd-9.3-amd64.tar.gz \
+              _/grease-netbsd-9.3-amd64.tar.gz.sha256 \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "Grease NetBSD 9.3 amd64 $short" \
+              --notes-file _/release-notes.txt
           fi
