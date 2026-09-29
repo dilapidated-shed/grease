@@ -1,0 +1,118 @@
+name: NetBSD SDF Grease
+
+on:
+  push:
+    branches: [netbsd/sdf-grease]
+  pull_request:
+    paths:
+      - .github/workflows/netbsd-sdf.yml
+      - source
+
+permissions:
+  contents: read
+
+jobs:
+  netbsd-11:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Check out exact Grease head and source pin
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Record exact source revision
+        id: source_pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          revision="$(git rev-parse HEAD:source)"
+          test "$(git -C source rev-parse HEAD)" = "$revision"
+          printf 'revision=%s\n' "$revision" >> "$GITHUB_OUTPUT"
+          printf 'grease_revision=%s\n' "$(git rev-parse HEAD)"
+          printf 'oils_revision=%s\n' "$revision"
+
+      - name: Check out pinned Oils source as a standalone worktree
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: isomorphisms/oils
+          ref: ${{ steps.source_pin.outputs.revision }}
+          path: source-worktree
+          persist-credentials: false
+
+      - name: Generate the portable Grease C++ source tarball
+        working-directory: source-worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo sysctl vm.mmap_rnd_bits=28
+          soil/github-actions.sh run-job cpp-tarball podman
+          test "$(cat _tmp/soil/commit-hash.txt)" = "${{ steps.source_pin.outputs.revision }}"
+          soil/host-shim.sh did-all-succeed cpp-tarball
+          test -f _release/oils-for-unix.tar
+          mkdir -p "$GITHUB_WORKSPACE/_/netbsd-input"
+          cp _release/oils-for-unix.tar "$GITHUB_WORKSPACE/_/netbsd-input/"
+
+      - name: Compile exact Grease source in NetBSD 11
+        uses: vmactions/netbsd-vm@c8a0d7ddb84619a7a8cc4e652efa7950b3fd9f92
+        with:
+          release: "11.0"
+          arch: x86_64
+          sync: rsync
+          run: |
+            set -eu
+            uname -a
+            work="$GITHUB_WORKSPACE/_/netbsd-build"
+            package="$GITHUB_WORKSPACE/_/netbsd-package"
+            rm -rf "$work" "$package"
+            mkdir -p "$work" "$package"
+
+            cd "$work"
+            tar -xf "$GITHUB_WORKSPACE/_/netbsd-input/oils-for-unix.tar"
+            source_dir="$(find . -maxdepth 1 -type d -name 'oils-for-unix-*' -print | head -n 1)"
+            test -n "$source_dir"
+            cd "$source_dir"
+
+            ./configure --without-readline
+            _build/oils.sh --variant opt
+
+            test -x _bin/cxx-opt-sh/oils-for-unix
+            _bin/cxx-opt-sh/oils-for-unix ysh -c 'echo grease-netbsd-ready'
+
+            cp _bin/cxx-opt-sh/oils-for-unix "$package/oils-for-unix"
+            chmod 755 "$package/oils-for-unix"
+            cat > "$package/grease" <<'EOF'
+            #!/bin/sh
+            here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+            exec "$here/oils-for-unix" ysh "$@"
+            EOF
+            chmod 755 "$package/grease"
+            "$package/grease" -c 'echo grease-wrapper-ready'
+
+            {
+              printf 'netbsd_uname='
+              uname -a
+              printf 'grease_source_revision=%s\n' '${{ steps.source_pin.outputs.revision }}'
+              printf 'grease_repository_revision=%s\n' '${{ github.event.pull_request.head.sha || github.sha }}'
+            } > "$package/receipt.txt"
+
+      - name: Archive NetBSD package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x _/netbsd-package/oils-for-unix
+          test -x _/netbsd-package/grease
+          tar -C _/netbsd-package -czf _/grease-netbsd-11-amd64.tar.gz .
+          sha256sum _/grease-netbsd-11-amd64.tar.gz > _/grease-netbsd-11-amd64.tar.gz.sha256
+
+      - name: Publish NetBSD Grease artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: grease-netbsd-11-amd64-${{ github.sha }}
+          path: |
+            _/grease-netbsd-11-amd64.tar.gz
+            _/grease-netbsd-11-amd64.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 7
