@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  netbsd-11:
+  netbsd-9_3:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -63,10 +63,10 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           sudo rm -rf source-worktree
 
-      - name: Compile exact Grease source in NetBSD 11
+      - name: Compile exact Grease source in NetBSD 9.3
         uses: vmactions/netbsd-vm@c8a0d7ddb84619a7a8cc4e652efa7950b3fd9f92
         with:
-          release: "11.0"
+          release: "9.3"
           arch: x86_64
           sync: rsync
           run: |
@@ -124,17 +124,17 @@ jobs:
           test -x _/netbsd-package/greasecpp
           test -L _/netbsd-package/grease
           test "$(readlink _/netbsd-package/grease)" = greasecpp
-          tar -C _/netbsd-package -czf _/grease-netbsd-11-amd64.tar.gz .
-          sha256sum _/grease-netbsd-11-amd64.tar.gz > _/grease-netbsd-11-amd64.tar.gz.sha256
-          printf 'sha256=%s\n' "$(cut -d' ' -f1 _/grease-netbsd-11-amd64.tar.gz.sha256)" >> "$GITHUB_OUTPUT"
+          tar -C _/netbsd-package -czf _/grease-netbsd-9.3-amd64.tar.gz .
+          sha256sum _/grease-netbsd-9.3-amd64.tar.gz > _/grease-netbsd-9.3-amd64.tar.gz.sha256
+          printf 'sha256=%s\n' "$(cut -d' ' -f1 _/grease-netbsd-9.3-amd64.tar.gz.sha256)" >> "$GITHUB_OUTPUT"
 
       - name: Publish NetBSD Grease artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: grease-netbsd-11-amd64-${{ github.sha }}
+          name: grease-netbsd-9.3-amd64-${{ github.sha }}
           path: |
-            _/grease-netbsd-11-amd64.tar.gz
-            _/grease-netbsd-11-amd64.tar.gz.sha256
+            _/grease-netbsd-9.3-amd64.tar.gz
+            _/grease-netbsd-9.3-amd64.tar.gz.sha256
           if-no-files-found: error
           retention-days: 7
 
@@ -149,9 +149,9 @@ jobs:
           set -euo pipefail
           command -v gh >/dev/null
           short=${GITHUB_SHA:0:12}
-          tag="netbsd-11-amd64-$short"
+          tag="netbsd-9.3-amd64-$short"
           cat > _/release-notes.txt <<EOF
-          NetBSD 11 amd64 Grease runtime for SDF-style unprivileged installs.
+          NetBSD 9.3 amd64 Grease runtime for SDF-style unprivileged installs.
 
           This artifact contains the C++ implementation as `greasecpp`.
           `grease` is a symlink to the currently preferred implementation;
@@ -161,14 +161,14 @@ jobs:
 
           Grease repository commit: $GITHUB_SHA
           Pinned Oils-derived Grease source: $SOURCE_SHA
-          Target: NetBSD 11 amd64
+          Target: NetBSD 9.3 amd64
           Artifact SHA-256: $ARTIFACT_SHA256
 
-          The binary was compiled and smoke-tested inside the NetBSD 11 VM job above.
+          The binary was compiled and smoke-tested inside the NetBSD 9.3 VM job above.
           EOF
 
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag"               _/grease-netbsd-11-amd64.tar.gz               _/grease-netbsd-11-amd64.tar.gz.sha256               --clobber
+            gh release upload "$tag"               _/grease-netbsd-9.3-amd64.tar.gz               _/grease-netbsd-9.3-amd64.tar.gz.sha256               --clobber
           else
-            gh release create "$tag"               _/grease-netbsd-11-amd64.tar.gz               _/grease-netbsd-11-amd64.tar.gz.sha256               --target "$GITHUB_SHA"               --prerelease               --title "Grease NetBSD 11 amd64 $short"               --notes-file _/release-notes.txt
+            gh release create "$tag"               _/grease-netbsd-9.3-amd64.tar.gz               _/grease-netbsd-9.3-amd64.tar.gz.sha256               --target "$GITHUB_SHA"               --prerelease               --title "Grease NetBSD 9.3 amd64 $short"               --notes-file _/release-notes.txt
           fi
