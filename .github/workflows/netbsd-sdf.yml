@@ -57,6 +57,13 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/_/netbsd-input"
           cp _release/oils-for-unix.tar "$GITHUB_WORKSPACE/_/netbsd-input/"
 
+          # The VM only needs the portable tarball.  Soil leaves generated
+          # container-owned files in this standalone worktree; deleting that
+          # worktree also keeps the NetBSD sync small and avoids permission
+          # errors while preserving the exact tarball above.
+          cd "$GITHUB_WORKSPACE"
+          sudo rm -rf source-worktree
+
       - name: Compile exact Grease source in NetBSD 11
         uses: vmactions/netbsd-vm@c8a0d7ddb84619a7a8cc4e652efa7950b3fd9f92
         with:
