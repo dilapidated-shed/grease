@@ -1,0 +1,61 @@
+module Ish.Pipeline.Meaning
+
+-- Pipeline demand belongs to the inert logical plan. These meanings say
+-- nothing about live descriptors, PIDs, fork/wait, or cancellation machinery.
+
+public export
+data Stream_unit
+  = Byte
+  | Line
+  | Record
+
+public export
+record Stream_limit where
+  constructor Limited_to
+  unit : Stream_unit
+  count : Number
+
+public export
+data Stream_demand
+  = Complete_stream
+  | Bounded_prefix Stream_limit
+
+-- How output cardinality relates to the input a stage may need to inspect.
+-- An opaque stage stops static propagation. A preserving stage can pass a
+-- finite count upstream unchanged. A filtering stage may need arbitrarily
+-- much input to produce a finite requested number of outputs.
+public export
+data Demand_relation
+  = Demand_relation_unknown
+  | Preserves_output_count
+  | Filters_input_to_output
+
+-- Some known stages can accept a requested output bound directly. For an
+-- opaque external command, the only generic early-stop mechanism remains
+-- closing its downstream pipe when the consumer is finished.
+public export
+data Output_bound_support
+  = Cannot_accept_output_bound
+  | Can_accept_output_bound
+
+public export
+data Early_completion
+  = Requires_input_exhaustion
+  | May_finish_when_demand_satisfied
+
+public export
+record Stage_contract where
+  constructor Stage_with_contract
+  input_unit : Stream_unit
+  output_unit : Stream_unit
+  demand_relation : Demand_relation
+  output_bound_support : Output_bound_support
+  early_completion : Early_completion
+
+export
+all_output : Stream_demand
+all_output = Complete_stream
+
+export
+at_most : Stream_unit → Number → Stream_demand
+at_most unit count = Bounded_prefix $ Limited_to unit count
