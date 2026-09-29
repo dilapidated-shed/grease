@@ -17,3 +17,12 @@ git clone --recurse-submodules https://github.com/isomorphisms/grease.git
 ```
 
 Keeping the Oils-derived tree as a pinned submodule avoids copying the full upstream repository while giving Grease one stable, reproducible source location for CI and local builds.
+
+
+## Vast.ai
+
+`commands/vast/vast.ysh` gives Grease a thin REST hook for Vast.ai GPU
+compute. It covers offer search and the core instance lifecycle without making
+Grease depend on Vast's Python SDK. The repository receipt exercises the actual
+pinned Grease/YSH runtime against an HTTP fixture; see
+[`commands/vast/README.md`](commands/vast/README.md).
