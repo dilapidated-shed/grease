@@ -15,6 +15,8 @@ jobs:
   netbsd-11:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    env:
+      REPO_ROOT: ${{ github.workspace }}/source-worktree
     steps:
       - name: Check out exact Grease head and source pin
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
