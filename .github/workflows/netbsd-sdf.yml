@@ -9,7 +9,7 @@ on:
       - source
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   netbsd-11:
@@ -57,10 +57,9 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/_/netbsd-input"
           cp _release/oils-for-unix.tar "$GITHUB_WORKSPACE/_/netbsd-input/"
 
-          # The VM only needs the portable tarball.  Soil leaves generated
+          # The VM only needs the portable tarball. Soil leaves generated
           # container-owned files in this standalone worktree; deleting that
-          # worktree also keeps the NetBSD sync small and avoids permission
-          # errors while preserving the exact tarball above.
+          # worktree keeps the NetBSD sync small and avoids permission errors.
           cd "$GITHUB_WORKSPACE"
           sudo rm -rf source-worktree
 
@@ -108,6 +107,7 @@ jobs:
             } > "$package/receipt.txt"
 
       - name: Archive NetBSD package
+        id: package
         shell: bash
         run: |
           set -euo pipefail
@@ -115,6 +115,7 @@ jobs:
           test -x _/netbsd-package/grease
           tar -C _/netbsd-package -czf _/grease-netbsd-11-amd64.tar.gz .
           sha256sum _/grease-netbsd-11-amd64.tar.gz > _/grease-netbsd-11-amd64.tar.gz.sha256
+          printf 'sha256=%s\n' "$(cut -d' ' -f1 _/grease-netbsd-11-amd64.tar.gz.sha256)" >> "$GITHUB_OUTPUT"
 
       - name: Publish NetBSD Grease artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -125,3 +126,32 @@ jobs:
             _/grease-netbsd-11-amd64.tar.gz.sha256
           if-no-files-found: error
           retention-days: 7
+
+      - name: Publish immutable NetBSD release assets
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.source_pin.outputs.revision }}
+          ARTIFACT_SHA256: ${{ steps.package.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          command -v gh >/dev/null
+          short=${GITHUB_SHA:0:12}
+          tag="netbsd-11-amd64-$short"
+          cat > _/release-notes.txt <<EOF
+          NetBSD 11 amd64 Grease runtime for SDF-style unprivileged installs.
+
+          Grease repository commit: $GITHUB_SHA
+          Pinned Oils-derived Grease source: $SOURCE_SHA
+          Target: NetBSD 11 amd64
+          Artifact SHA-256: $ARTIFACT_SHA256
+
+          The binary was compiled and smoke-tested inside the NetBSD 11 VM job above.
+          EOF
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag"               _/grease-netbsd-11-amd64.tar.gz               _/grease-netbsd-11-amd64.tar.gz.sha256               --clobber
+          else
+            gh release create "$tag"               _/grease-netbsd-11-amd64.tar.gz               _/grease-netbsd-11-amd64.tar.gz.sha256               --target "$GITHUB_SHA"               --prerelease               --title "Grease NetBSD 11 amd64 $short"               --notes-file _/release-notes.txt
+          fi
