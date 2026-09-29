@@ -2,7 +2,7 @@
 
 # Thin Vast.ai REST client for Grease.
 #
-# Keep provider details at this boundary.  The API key comes from the
+# Keep provider details at this boundary. The API key comes from the
 # environment and is never accepted as a command-line argument.
 
 usage() {
@@ -27,15 +27,15 @@ fi
 base_url=${VAST_API_BASE_URL:-https://console.vast.ai}
 
 request() {
-  var method = "$1"
-  var path = "$2"
+  method=$1
+  path=$2
 
   if test "$#" -eq 3; then
     curl --fail-with-body --silent --show-error \
       --request "$method" \
       --header "Authorization: Bearer $VAST_API_KEY" \
       --header 'Content-Type: application/json' \
-      --data "$3" \
+      --data-binary "$3" \
       "$base_url$path"
   else
     curl --fail-with-body --silent --show-error \
@@ -51,7 +51,7 @@ if test "$#" -eq 0; then
   exit 2
 fi
 
-var command = "$1"
+command=$1
 shift
 
 case "$command" in
