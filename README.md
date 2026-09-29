@@ -17,3 +17,16 @@ git clone --recurse-submodules https://github.com/isomorphisms/grease.git
 ```
 
 Keeping the Oils-derived tree as a pinned submodule avoids copying the full upstream repository while giving Grease one stable, reproducible source location for CI and local builds.
+
+
+## Executable names
+
+Implementation names stay explicit:
+
+- `greasecpp` — the Oils/MyCPP C++ implementation.
+- `greased` — the D implementation.
+- `grease` — a symlink (or platform-equivalent pointer) to the preferred implementation.
+
+The generic `grease` name must not hide which implementation was built. A package
+may switch the `grease` link from `greasecpp` to `greased` only after the D
+implementation passes the same correctness and platform acceptance checks.
