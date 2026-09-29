@@ -6,7 +6,7 @@ on:
       - netbsd/greased
   pull_request:
     paths:
-      - '.github/workflows/netbsd-greased.yml'
+      - '.github/workflows/netbsd-ysh-d.yml'
   workflow_dispatch:
 
 permissions:
@@ -190,7 +190,7 @@ jobs:
             test "$(uname -m)" = amd64
             uname -a
 
-            greased="$GITHUB_WORKSPACE/_/netbsd-ysh-d/ysh-d"
+            ysh_d="$GITHUB_WORKSPACE/_/netbsd-ysh-d/ysh-d"
             test -s "$ysh_d"
             chmod 755 "$ysh_d"
             file "$ysh_d"
@@ -199,7 +199,7 @@ jobs:
             actual=$("$ysh_d" '1 + 2 * 3')
             test "$actual" = 7
 
-            "$greased" -c 'var x = 1; setvar x = 42'
+            "$ysh_d" -c 'var x = 1; setvar x = 42'
 
             program=$(cat <<'EOF'
             var items = ['a b', 'c d']; var answer = 42; write @items; write $answer $[6 * 7] @[['x', 'y']]; echo s=$answer; echo "value=$answer"; write pre$answer-post
@@ -220,7 +220,8 @@ jobs:
             printf 'target=%s\n' "$NETBSD_TARGET"
             printf 'netbsd_release=%s\n' "$NETBSD_RELEASE"
             printf 'implementation=ysh-d-partial\n'
-            printf 'greased_claim=no\ndefault_pointer_changed=no\n'
+            printf 'greased_claim=no\n'
+            printf 'default_pointer_changed=no\n'
             cat _receipt/netbsd-sets.txt
           } > _/netbsd-ysh-d/receipt.txt
           sha256sum _/netbsd-ysh-d/ysh-d > _/netbsd-ysh-d/ysh-d.sha256
