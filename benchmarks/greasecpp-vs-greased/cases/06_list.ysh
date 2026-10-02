@@ -1,0 +1,11 @@
+#!/usr/bin/env ysh
+
+var items = ['ale', 'bean', 'corn', 'date', 'egg']
+var checksum = 0
+
+for round in (0 .. 20000) {
+  for item in (items) {
+    setvar checksum += len(item)
+  }
+}
+echo $[checksum]
