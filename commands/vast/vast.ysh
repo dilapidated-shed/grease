@@ -1,0 +1,130 @@
+#!/usr/bin/env ysh
+
+# Thin Vast.ai REST client for Grease.
+#
+# Keep provider details at this boundary. The API key comes from the
+# environment and is never accepted as a command-line argument.
+
+usage() {
+  echo 'usage: vast.ysh COMMAND [ARGS]'
+  echo
+  echo 'commands:'
+  echo '  user'
+  echo '  offers JSON'
+  echo '  create OFFER_ID JSON'
+  echo '  instance INSTANCE_ID'
+  echo '  instances [QUERY_STRING]'
+  echo '  start INSTANCE_ID'
+  echo '  stop INSTANCE_ID'
+  echo '  destroy INSTANCE_ID'
+}
+
+if test -z "${VAST_API_KEY:-}"; then
+  echo 'VAST_API_KEY is required' >&2
+  exit 2
+fi
+
+base_url=${VAST_API_BASE_URL:-https://console.vast.ai}
+
+authorization_header() {
+  printf 'Authorization: Bearer %s\n' "$VAST_API_KEY"
+}
+
+request() {
+  method=$1
+  path=$2
+
+  if test "$#" -eq 3; then
+    authorization_header |
+      curl --fail-with-body --silent --show-error \
+        --connect-timeout 20 --max-time 120 \
+        --request "$method" \
+        --header @- \
+        --header 'Content-Type: application/json' \
+        --data-binary "$3" \
+        "$base_url$path"
+  else
+    authorization_header |
+      curl --fail-with-body --silent --show-error \
+        --connect-timeout 20 --max-time 120 \
+        --request "$method" \
+        --header @- \
+        --header 'Accept: application/json' \
+        "$base_url$path"
+  fi
+}
+
+if test "$#" -eq 0; then
+  usage
+  exit 2
+fi
+
+command=$1
+shift
+
+case "$command" in
+  user)
+    if test "$#" -ne 0; then
+      usage
+      exit 2
+    fi
+    request GET '/api/v0/users/current/'
+    ;;
+  offers)
+    if test "$#" -ne 1; then
+      usage
+      exit 2
+    fi
+    request POST '/api/v0/bundles/' "$1"
+    ;;
+  create)
+    if test "$#" -ne 2; then
+      usage
+      exit 2
+    fi
+    request PUT "/api/v0/asks/$1/" "$2"
+    ;;
+  instance)
+    if test "$#" -ne 1; then
+      usage
+      exit 2
+    fi
+    request GET "/api/v0/instances/$1/"
+    ;;
+  instances)
+    if test "$#" -gt 1; then
+      usage
+      exit 2
+    fi
+    if test "$#" -eq 1; then
+      request GET "/api/v1/instances/?$1"
+    else
+      request GET '/api/v1/instances/?limit=25'
+    fi
+    ;;
+  start)
+    if test "$#" -ne 1; then
+      usage
+      exit 2
+    fi
+    request PUT "/api/v0/instances/$1/" '{"state":"running"}'
+    ;;
+  stop)
+    if test "$#" -ne 1; then
+      usage
+      exit 2
+    fi
+    request PUT "/api/v0/instances/$1/" '{"state":"stopped"}'
+    ;;
+  destroy)
+    if test "$#" -ne 1; then
+      usage
+      exit 2
+    fi
+    request DELETE "/api/v0/instances/$1/"
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac
