@@ -33,9 +33,11 @@ END {
     }
 
     p10 = int((n - 1) * 0.10) + 1
-    p50 = int((n - 1) * 0.50) + 1
     p90 = int((n - 1) * 0.90) + 1
+    middle = int(n / 2)
+    median = n % 2 ? value[key, middle + 1] : \
+      (value[key, middle] + value[key, middle + 1]) / 2
 
-    print case_name[key], implementation[key], n, value[key, 1],       value[key, p10], value[key, p50], value[key, p90]
+    print case_name[key], implementation[key], n, value[key, 1],       value[key, p10], median, value[key, p90]
   }
 }

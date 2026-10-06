@@ -102,3 +102,9 @@ the real C++ executable on the same target. This directory remains research
 infrastructure; it does not establish a canonical operational workflow.
 Repeatable process orchestration belongs in Flexible Pipes, pasteable operator
 procedures in Kitchen, and build/deployment identities in Cat Food.
+
+The sweep also corrected even-sized sample medians: unsorted observations
+[40, 10, 30, 20] previously reported 20 and now report the conventional median
+25. Odd-sized fixture results remain unchanged. p10 and p90 select the lower
+observed order statistic at `floor((n - 1) * p) + 1`; they do not interpolate.
+Repository identity collection now accepts Git worktrees as well as checkouts.

@@ -128,7 +128,7 @@ printf 'uname\t%s\n' "$(uname -a)" >> "$metadata"
 printf 'repetitions\t%s\n' "$repetitions" >> "$metadata"
 printf 'warmup_repetitions\t%s\n' "$warmups" >> "$metadata"
 
-if command -v git >/dev/null 2>&1 && [ -d "$repo_root/.git" ]; then
+if command -v git >/dev/null 2>&1 && git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   if repo_revision=$(git -C "$repo_root" rev-parse HEAD 2>/dev/null); then
     printf 'repository_revision\t%s\n' "$repo_revision" >> "$metadata"
   fi
