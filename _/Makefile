@@ -16,10 +16,13 @@ build/exec/ish-backend: $(IDRIC_SOURCES) ish.ipkg libish_runtime.so
 build/exec/filesystem-acceptance: $(IDRIC_SOURCES) filesystem-acceptance.ipkg libish_runtime.so
 	CHEZ=$(CHEZ) $(IDRIC) --build filesystem-acceptance.ipkg
 
+build/exec/memory-acceptance: $(IDRIC_SOURCES) memory-acceptance.ipkg libish_runtime.so
+	CHEZ=$(CHEZ) $(IDRIC) --build memory-acceptance.ipkg
+
 build/exec/allocation-probe: $(IDRIC_SOURCES) allocation-probe.ipkg libish_runtime.so
 	CHEZ=$(CHEZ) $(IDRIC) --build allocation-probe.ipkg
 
-libish_runtime.so: runtime/execute.c runtime/filesystem.c
+libish_runtime.so: runtime/execute.c runtime/filesystem.c runtime/memory.c
 	$(CC) -std=c11 -Wall -Wextra -Werror -fPIC -shared -o $@ $^
 
 test/probe: test/probe.c
@@ -28,7 +31,7 @@ test/probe: test/probe.c
 check: libish_runtime.so
 	$(IDRIC) --source-dir src --check src/Ish.idric
 
-test: build/exec/ish build/exec/filesystem-acceptance test/probe
+test: build/exec/ish build/exec/filesystem-acceptance build/exec/memory-acceptance test/probe
 	sh test/acceptance.sh
 
 acceptance: clean

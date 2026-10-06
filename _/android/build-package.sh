@@ -154,7 +154,8 @@ cp "$target_program" "$runtime/ish-backend.so"
 "$cc" -std=c11 -Wall -Wextra -Werror -fPIC -shared \
   -o "$runtime/libish_runtime.so" \
   "$repo_root/_/runtime/execute.c" \
-  "$repo_root/_/runtime/filesystem.c"
+  "$repo_root/_/runtime/filesystem.c" \
+  "$repo_root/_/runtime/memory.c"
 "$cc" -std=c11 -Wall -Wextra -Werror \
   -o "$output_dir/bin/ish" "$repo_root/_/android/launch.c"
 "$strip" --strip-unneeded "$runtime/scheme" "$runtime/libish_runtime.so" "$output_dir/bin/ish"
@@ -168,13 +169,6 @@ for elf in "$output_dir/bin/ish" "$runtime/scheme" "$runtime/libish_runtime.so";
     exit 3
   fi
 done
-
-# Cat Food must receive a real Ish entrypoint, not an alias to an Oils shell.
-test ! -L "$output_dir/bin/ish"
-if grep -aE '/(ysh|osh|oils-for-unix)([[:space:]\000]|$)' "$output_dir/bin/ish" >/dev/null; then
-  printf '%s\n' 'Android Ish launcher unexpectedly names an Oils shell' >&2
-  exit 3
-fi
 
 ndk_revision=$(sed -n 's/^Pkg.Revision[[:space:]]*=[[:space:]]*//p' \
   "$ndk/source.properties" 2>/dev/null | head -n 1)
@@ -200,6 +194,8 @@ idric_revision=$(sed -n 's/^revision = "\([0-9a-f][0-9a-f]*\)"$/\1/p' \
   printf 'engine\tlibexec/ish/ish-backend.so\n'
   printf 'physical_device_execution\tPENDING\n'
 } >"$output_dir/receipts/build.tsv"
+
+bash "$repo_root/_/test/package-boundary.sh" "$output_dir" "$abi"
 
 sha256sum \
   "$output_dir/bin/ish" \

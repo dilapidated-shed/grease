@@ -15,7 +15,10 @@ jobs:
   one-incantation:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Read exact Idriç pin
         id: idric
@@ -25,7 +28,7 @@ jobs:
           test -n "$revision"
           printf 'revision=%s\n' "$revision" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: isomorphisms/Idric
           ref: ${{ steps.idric.outputs.revision }}
