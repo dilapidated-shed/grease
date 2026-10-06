@@ -1,9 +1,6 @@
 name: NetBSD YSH D translation
 
 on:
-  push:
-    branches:
-      - netbsd/greased
   pull_request:
     paths:
       - '.github/workflows/netbsd-ysh-d.yml'
@@ -24,7 +21,7 @@ jobs:
       NETBSD_RELEASE: "9.3"
       NETBSD_TARGET: x86_64-unknown-netbsd
       ICK_REVISION: 22b41425cb478754346637db87ebd42e43b42863
-      GREASE_D_REVISION: d5ef8cad8a41600c8ab2699cd0572d45e79397e6
+      GREASE_D_REVISION: aff4d1f1d83da432fd0a149e51fd4f52542861bc
       GREASE_D_BASE: c589aa679b6625eb9a124f5af637a7be454a27b0
     steps:
       - name: Check out exact Grease head
