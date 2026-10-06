@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          sets="https://cdn.netbsd.org/pub/NetBSD/NetBSD-${NETBSD_RELEASE}/amd64/binary/sets"
+          sets="https://archive.netbsd.org/pub/NetBSD-archive/NetBSD-${NETBSD_RELEASE}/amd64/binary/sets"
           mkdir -p _netbsd-sets _netbsd-sysroot _receipt
           curl --fail --location --proto '=https' --tlsv1.2 \
             "$sets/SHA512" -o _netbsd-sets/SHA512
