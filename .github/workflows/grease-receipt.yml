@@ -39,7 +39,7 @@ jobs:
       - name: Check out pinned Oils source as standalone worktree
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          repository: isomorphisms/oils
+          repository: dilapidated-shed/oils
           ref: ${{ steps.source_pin.outputs.revision }}
           path: source-worktree
           persist-credentials: false

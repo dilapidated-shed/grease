@@ -106,7 +106,7 @@ run_case() {
   case_file=$3
   case "$mode" in
     run) "$executable" "$case_file" ;;
-    parse) "$executable" -n "$case_file" ;;
+    parse) "$executable" --ast-format none -n "$case_file" ;;
     *) fail "unknown benchmark mode: $mode" ;;
   esac
 }
@@ -188,7 +188,13 @@ while IFS="$(printf '\t')" read -r case_name mode expected_stdout purpose; do
       fail "$implementation failed $case_name with exit status $status"
     fi
     if [ -s "$stderr_file" ]; then
-      fail "$implementation wrote stderr in $case_name"
+      # The reference reports this informational marker for --ast-format none.
+      # Accept only that exact parse-only marker, never arbitrary diagnostics.
+      expected_stderr="$results_root/$case_name.expected-stderr"
+      printf 'AST not printed.\n' > "$expected_stderr"
+      if [ "$mode" != parse ] || ! cmp -s "$expected_stderr" "$stderr_file"; then
+        fail "$implementation wrote unexpected stderr in $case_name"
+      fi
     fi
 
     if [ "$expected_stdout" = '<empty>' ]; then

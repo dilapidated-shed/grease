@@ -10,16 +10,17 @@ two executable paths explicitly and records their SHA-256 identities. It never
 falls back to Bash, POSIX sh, Python, another YSH build, or a handwritten
 equivalent.
 
-Correctness is a gate. Every case has a fixed expected stdout, requires empty
-stderr and exit status 0, and is checked for both executables before timing
-begins. A semantic mismatch stops the run.
+Correctness is a gate. Every case has a fixed expected stdout and requires exit
+status 0. Stderr must be empty except for the exact reference informational
+marker `AST not printed.` in parse-only mode. Both executables are checked
+before timing begins. A semantic mismatch stops the run.
 
 ## Cases
 
 | Case | Intended pressure |
 | --- | --- |
 | 01_empty.ysh | fresh-process startup and runtime initialization |
-| 02_parse_large.ysh | parser/frontend cost with execution disabled by -n |
+| 02_parse_large.ysh | parser/frontend cost with --ast-format none -n |
 | 03_loop.ysh | typed integer range/loop/update overhead |
 | 04_function_call.ysh | repeated Grease proc dispatch |
 | 05_string.ysh | immutable string construction and length |
@@ -108,3 +109,39 @@ The sweep also corrected even-sized sample medians: unsorted observations
 25. Odd-sized fixture results remain unchanged. p10 and p90 select the lower
 observed order statistic at `floor((n - 1) * p) + 1`; they do not interpolate.
 Repository identity collection now accepts Git worktrees as well as checkouts.
+
+## Paired compatibility execution — 2026-10-06
+
+The suite was then executed against real exact-source CI artifacts on the same
+Linux amd64 scratch host, with three requested repetitions:
+
+| Role | Exact source | Executable SHA-256 | Bytes | Build |
+| --- | --- | --- | --- | --- |
+| greasecpp | Oils f20c8a333d82b20781e1d024c0293dd4acf4ba12 | c2732dca67fa726858a8dd2f2bb5e5f8262aa0f5749dc62180551a618004196a | 17837416 | inherited cxx-asan reference |
+| greased | Oils 6db04a02228ad4328f75f79c0ad477c02723767c | 5d7b5bb1e95b718e4de3335c6727c698fc904db1202353e111114a2248678046 | 2654792 | partial YSH D translation, pinned Icky DMD/runtime |
+
+The role name `greased` does not claim this partial translation is complete.
+Artifact producers: [Grease reference receipt](https://github.com/dilapidated-shed/grease/actions/runs/37474007912)
+and [D compilation, module tests and full smoke sequence](https://github.com/dilapidated-shed/oils/actions/runs/37475808606).
+The C++ source implementation is identical to the later alias test-fixture fix.
+Leak detection was disabled because LeakSanitizer cannot inspect processes in
+this execution environment; no other runtime was substituted.
+
+The first execution exposed a harness defect: `-n` prints the reference AST,
+contradicting the empty-output oracle. The repaired parse-only command uses
+`--ast-format none -n` and accepts only the exact informational stderr marker,
+or empty stderr. Arbitrary diagnostics still fail.
+
+With that repair, both executables pass the empty program. The C++ reference
+passes the large parse-only program; D exits 3 with `unexpected 'none' at byte
+13`, because it does not implement this CLI/parse-only contract. The runner
+stops before warmup or timing. The exact gate hashes are preserved in
+[the compatibility receipt](receipts/2026-10-06-compatibility.tsv).
+Tested runner SHA-256: `7815e9bbab75ff8fe1e99f7e7ac6e628e928b612a5bc6b75a6d9d1ce7f0fa978`.
+
+Result: these builds are not semantically comparable across the suite yet.
+No startup, parser, loop, process, pipeline, CPU or RSS winner is established.
+The executable byte counts identify these artifacts; the ASAN C++ build and
+partial D build are not equivalent configurations, so those counts do not
+establish a language/backend size advantage. The one comparison dependency is
+the compatible D runtime, beginning with the nonexecuting parse-only entrypoint.
