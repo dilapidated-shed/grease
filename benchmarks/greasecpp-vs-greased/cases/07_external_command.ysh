@@ -1,0 +1,6 @@
+#!/usr/bin/env ysh
+
+for i in (0 .. 200) {
+  cat /dev/null
+}
+echo 200

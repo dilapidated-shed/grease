@@ -1,0 +1,7 @@
+#!/usr/bin/env ysh
+
+var total = 0
+for i in (0 .. 100000) {
+  setvar total += i
+}
+echo $[total]

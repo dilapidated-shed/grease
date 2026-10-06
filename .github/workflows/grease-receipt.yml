@@ -146,3 +146,15 @@ jobs:
             echo 'Grease accepted an inspection record with compact.encode_status missing' >&2
             exit 1
           fi
+
+      - name: Preserve exact alias diagnostics and tested reference executable
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: grease-alias-diagnostics-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            source-worktree/_tmp/spec/ysh-cpp/grease-alias.*
+            source-worktree/_tmp/spec/ysh-py/grease-alias.*
+            source-worktree/_bin/cxx-asan/ysh
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,7 @@
+#!/usr/bin/env ysh
+
+var text = 'x'
+for i in (0 .. 5000) {
+  setvar text = text ++ 'x'
+}
+echo $[len(text)]

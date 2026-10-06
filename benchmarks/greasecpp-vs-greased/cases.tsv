@@ -1,0 +1,9 @@
+case	mode	expected_stdout	purpose
+01_empty.ysh	run	<empty>	fresh-process startup and runtime initialization
+02_parse_large.ysh	parse	<empty>	parser/frontend cost with execution disabled
+03_loop.ysh	run	4999950000	typed integer range loop and mutation
+04_function_call.ysh	run	100000	repeated proc dispatch
+05_string.ysh	run	5001	immutable string construction and length
+06_list.ysh	run	360000	typed List iteration and len
+07_external_command.ysh	run	200	repeated external process launch
+08_pipeline.ysh	run	200	repeated pipeline construction and process launch
