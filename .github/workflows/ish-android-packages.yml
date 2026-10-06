@@ -15,6 +15,7 @@ on:
       - '_/test/package-boundary.sh'
       - '_/test/package-boundary-self-test.sh'
       - '_/ish.ipkg'
+      - '_/allocation-probe.ipkg'
       - '_/idric.lock'
       - '.github/workflows/ish-android-packages.yml'
 
@@ -43,10 +44,16 @@ jobs:
       CHEZ_SHA: 8d105909c0afe899b6983e3371e5a7163c7e1826
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Prove package-boundary refusals
         run: bash _/test/package-boundary-self-test.sh
+
+      - name: Check physical-device harness syntax
+        run: sh -n _/android/accept-package.sh
 
       - name: Read exact Idriç pin
         id: idric
@@ -56,14 +63,14 @@ jobs:
           test -n "$revision"
           printf 'revision=%s\n' "$revision" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: isomorphisms/Idric
           ref: ${{ steps.idric.outputs.revision }}
           path: _idric
           persist-credentials: false
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: cisco/ChezScheme
           ref: ${{ env.CHEZ_SHA }}
@@ -85,12 +92,14 @@ jobs:
           CHEZ: ${{ github.workspace }}/_idric/_/.tools/bin/scheme
         run: |
           make -C _ clean
-          make -C _ build/exec/ish-backend
+          make -C _ build/exec/ish-backend build/exec/allocation-probe
           test -s _/build/exec/ish-backend_app/ish-backend.ss
+          test -s _/build/exec/allocation-probe_app/allocation-probe.ss
 
       - name: Cross-build real Ish package
         env:
-          ISH_SOURCE_SHA: ${{ github.sha }}
+          ISH_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          ISH_ALLOCATION_PROBE_OUTPUT: ${{ github.workspace }}/build/allocation-probe-${{ matrix.target }}.so
         shell: bash
         run: |
           mkdir -p build/diagnostics
@@ -112,7 +121,10 @@ jobs:
           if-no-files-found: error
 
       - name: Check package boundary
-        run: bash _/test/package-boundary.sh build/package '${{ matrix.abi }}'
+        shell: bash
+        run: |
+          bash _/test/package-boundary.sh build/package '${{ matrix.abi }}'
+          test -s build/allocation-probe-${{ matrix.target }}.so
 
       - name: Package deterministic archive
         id: package
@@ -135,6 +147,8 @@ jobs:
           path: |
             build/${{ matrix.archive }}
             build/${{ matrix.archive }}.sha256
+            build/allocation-probe-${{ matrix.target }}.so
+            _/android/test-allocation.sh
             build/package/receipts/
           if-no-files-found: error
 
