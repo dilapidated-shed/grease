@@ -75,3 +75,30 @@ the startup case.
 The suite is benchmark infrastructure, not acceptance evidence for a D
 translation by itself. A run is evidence only for the exact executable hashes
 and source revisions written into that run's metadata.
+
+## Execution attempt — 2026-10-06
+
+At harness revision `6829a9f934f54f8da626bf45b59003a9bc952eed`, the
+paired runner was invoked with the explicit roles `greasecpp greased 3`.
+It stopped before correctness or timing:
+
+    FAIL greasecpp executable is unavailable: greasecpp
+
+Neither named executable is installed in the sweep environment. Cat Food's
+current manifest tracks Oils `grease/main`; its bootstrap resolves Grease
+through the pinned Oils/YSH entrypoint, and supplies no completed `greased`
+build. The D work is the single translation successor in
+[dilapidated-shed/oils PR #5, “Begin whole-hog YSH translation to D”](https://github.com/dilapidated-shed/oils/pull/5).
+In particular, the parse-only benchmark requires a real compatible `-n` path.
+
+The runner passes its existing POSIX boundary syntax check. The summarizer was
+executed with deliberately unsorted fixture observations: [30, 10, 20] yielded
+min/p10/median/p90 = 10/10/20/20, and [40, 20, 30] yielded 20/20/30/30.
+These are harness checks, not runtime measurements.
+
+No implementation wins a measured dimension yet. The surviving comparison
+dependency is a compatible D executable from that translation line, paired with
+the real C++ executable on the same target. This directory remains research
+infrastructure; it does not establish a canonical operational workflow.
+Repeatable process orchestration belongs in Flexible Pipes, pasteable operator
+procedures in Kitchen, and build/deployment identities in Cat Food.
