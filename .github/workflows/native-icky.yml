@@ -1,0 +1,68 @@
+name: Native Icky C migration
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  native-actions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      ASAN_OPTIONS: detect_leaks=0
+    steps:
+      - name: Exact candidate source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Pinned current ICK producer
+        id: ick
+        uses: isomorphisms/ai-ci/ick-host@015cc7901ae0b3ad262b476f24e129b53c56db95
+      - name: Shared build-toolchain contract
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/ai-ci
+          ref: 01608a2493fa409463f70e8fbfd8a123ef59ee85
+          path: native-contract
+          persist-credentials: false
+      - name: Execute shared contract with ICK
+        run: |
+          "${{ steps.ick.outputs.compiler }}" ${{ steps.ick.outputs.link_flags }} -std=c17 -O2 native-contract/src/aici.c -o "$RUNNER_TEMP/native-contract"
+          "$RUNNER_TEMP/native-contract" verify native-contract/contracts/build-toolchain-v0.contract.tsv native-icky
+      - name: Pinned reference Grease executable
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          repository: dilapidated-shed/grease
+          run-id: 37478624499
+          artifact-ids: 11419782646
+          github-token: ${{ github.token }}
+          merge-multiple: true
+          path: grease-reference
+      - name: Verify and enable reference executable
+        run: |
+          echo '7e31cd05b7a9d8fb2a4a9e003a7f3fcb0159138506d17f0fb28da8cbe22aa85c  grease-reference/_bin/cxx-asan/ysh' | sha256sum -c -
+          chmod +x grease-reference/_bin/cxx-asan/ysh
+      - name: Execute candidate C and hostile mutations through Grease
+        run: >
+          grease-reference/_bin/cxx-asan/ysh native-icky/tests/run-ick.grease
+          "${{ steps.ick.outputs.compiler }}" "$RUNNER_TEMP/native-icky-c"
+          ${{ steps.ick.outputs.link_flags }}
+      - name: Preserve candidate source and producer receipts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-icky-c-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/native-icky-c/
+            ${{ runner.temp }}/ick-host-stage/qualification/
+            ${{ runner.temp }}/ick-host-stage/host-runtime*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve the exact qualified producer for independent replay
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-icky-host-compiler-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/ick-host-stage/
+          if-no-files-found: error
+          retention-days: 30

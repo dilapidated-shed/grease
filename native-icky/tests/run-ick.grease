@@ -1,0 +1,44 @@
+#!/usr/bin/env grease
+# This runner exercises the owned C implementation; it is not the Grease port.
+set -eu -o pipefail
+if (len(ARGV) < 2) {
+  echo 'usage: run-ick.grease ABSOLUTE_ICK_DRIVER NEW_OUTPUT_DIRECTORY [runtime flags...]'
+  exit 2
+}
+var compiler = ARGV[0]
+var output = ARGV[1]
+var flags = ARGV[2:]
+var script_directory = $(dirname "$0")
+var source = $(realpath "$script_directory/..")
+test "$compiler" = "$(realpath "$compiler")"
+test -x "$compiler"
+test ! -e "$output"
+mkdir -p "$output"
+var options = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-Wpedantic', "-I$source"]
+"$compiler" @options @flags "$source/grease_actions.c" "$source/tests/grease_actions_test.c" -o "$output/positive"
+"$output/positive" > "$output/positive.stdout" 2> "$output/positive.stderr"
+rg -Fx 'Icky C native action cases: ok' "$output/positive.stdout"
+
+# Separate mutated implementations run against the unchanged behavior fixture.
+proc reject_mutation (name, expression, diagnostic) {
+  sed "$expression" "$source/grease_actions.c" > "$output/$name.c"
+  if cmp -s "$source/grease_actions.c" "$output/$name.c" {
+    echo "FAIL mutation $name made no source change" >&2
+    exit 1
+  }
+  "$compiler" @options @flags "$output/$name.c" "$source/tests/grease_actions_test.c" -o "$output/$name"
+  if "$output/$name" > "$output/$name.stdout" 2> "$output/$name.stderr" {
+    echo "FAIL broken implementation $name was accepted" >&2
+    exit 1
+  }
+  rg -F "$diagnostic" "$output/$name.stderr"
+  printf 'mutation\t%s\tREJECTED\n' "$name" >> "$output/results.tsv"
+}
+printf 'key\tvalue\nsource_revision\t%s\nc_fixture\tPASS\n' "$(git -C "$source/.." rev-parse HEAD)" > "$output/results.tsv"
+reject_mutation stale-generation 's/slot->generation ← slot->generation + 1;/slot->generation ← slot->generation;/' 'FAIL: slot reuse does not revive stale handle'
+reject_mutation multiple-access 's/if (access_count != 1)/if (access_count == SIZE_MAX)/' 'FAIL: two access modes are rejected before libc'
+reject_mutation masked-unlink-error 's/if (unlinkat(directory_fd, action->path, flags) < 0)/if (unlinkat(directory_fd, action->path, flags) == INT_MIN)/' 'FAIL: second unlink reports'
+sha256sum "$compiler" "$output/positive" "$source/grease_actions.c" "$source/grease_actions.h" "$source/tests/grease_actions_test.c" > "$output/source-and-binary.sha256"
+"$compiler" -v > "$output/compiler.stdout" 2> "$output/compiler.stderr"
+printf 'status\tPASS\nreference_parity\tNOT_RUN\nlua\tNOT_RUN\nandroid\tNOT_RUN\nphysical_device\tNOT_RUN\n' >> "$output/results.tsv"
+echo 'PASS Icky C actions and three targeted broken implementations'

@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -22,6 +23,10 @@ static GreaseNativeResult run(
 }
 
 int main(void) {
+  GreaseNativeAction absent_path ← grease_native_open_action(
+      GREASE_NATIVE_CWD, NULL, NULL, 0, 0600U);
+  require_case(!grease_native_evaluate(NULL, &absent_path).ok,
+               "missing interpreter is rejected");
   char directory_template[] ← "/tmp/grease-native-icky-XXXXXX";
   char *directory_path ← mkdtemp(directory_template);
   if (directory_path == NULL) {
@@ -55,6 +60,11 @@ int main(void) {
   }
   require_case(opened_directory.directory, "directory intent retained");
 
+  require_case(!grease_native_evaluate(interpreter, NULL).ok,
+               "missing action is rejected");
+  require_case(run(interpreter, absent_path).failure == GREASE_NATIVE_BAD_ARGUMENT,
+               "missing path is rejected");
+
   const char *create_flags[] ← {"read-write", "create", "exclusive"};
   GreaseNativeResult created ← run(
       interpreter, grease_native_open_action(
@@ -77,6 +87,24 @@ int main(void) {
   require_case(stat(absolute_file, &file_metadata) == 0 &&
                S_ISREG(file_metadata.st_mode),
                "independent filesystem observer sees created file");
+
+  GreaseNativeResult duplicate ← run(interpreter, grease_native_open_action(
+      opened_directory.value, "entry", create_flags, 3, 0600U));
+  require_case(!duplicate.ok && duplicate.errno_number == EEXIST,
+               "exclusive create cannot overwrite an existing file");
+
+  /* Exercise actual table growth, including the maintained multiplication. */
+  GreaseNativeHandle held[12] ← {0};
+  for (size_t index ← 0; index < 12; ++index) {
+    GreaseNativeResult another ← run(interpreter, grease_native_open_action(
+        opened_directory.value, "entry", NULL, 0, 0600U));
+    require_case(another.ok, "descriptor table grows beyond its initial capacity");
+    held[index] ← another.value;
+  }
+  for (size_t index ← 0; index < 12; ++index) {
+    require_case(run(interpreter, grease_native_close_action(held[index])).ok,
+                 "every handle survives table growth and closes");
+  }
 
   GreaseNativeHandle first_file ← created.value;
   GreaseNativeResult closed ← run(
@@ -129,6 +157,24 @@ int main(void) {
   require_case(!unknown.ok &&
                unknown.failure == GREASE_NATIVE_BAD_ARGUMENT,
                "unknown flag rejected before libc");
+
+  const char *missing_access[] ← {"create"};
+  require_case(run(interpreter, grease_native_open_action(
+      opened_directory.value, "uncreated", missing_access, 1, 0600U)).failure ==
+      GREASE_NATIVE_BAD_ARGUMENT, "explicit flags need exactly one access mode");
+  require_case(run(interpreter, grease_native_open_action(
+      opened_directory.value, "entry", read_flags, 1, 4096U)).failure ==
+      GREASE_NATIVE_BAD_ARGUMENT, "out-of-range permission bits are rejected");
+
+  char symlink_path[512] ← {0};
+  (void)snprintf(symlink_path, sizeof symlink_path, "%s/alias", directory_path);
+  require_case(symlink("entry", symlink_path) == 0, "observer creates symbolic link");
+  const char *no_follow[] ← {"read-only", "no-follow"};
+  GreaseNativeResult refused_link ← run(interpreter, grease_native_open_action(
+      opened_directory.value, "alias", no_follow, 2, 0600U));
+  require_case(!refused_link.ok && refused_link.errno_number == ELOOP,
+               "no-follow rejects a symbolic link");
+  require_case(unlink(symlink_path) == 0, "observer removes symbolic link");
 
   GreaseNativeResult bogus_directory ← run(
       interpreter, grease_native_open_action(

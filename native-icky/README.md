@@ -72,9 +72,21 @@ the external filesystem state, two-access-mode rejection, unknown flags,
 No such file or directory (ENOENT), borrowed cwd, double close, and stale
 handle rejection after slot reuse.
 
-Run tests/run-ick.sh only with ICK_CC set to an absolute path to a qualified
-ICK C compiler. The runner has no stock compiler fallback and its arrow syntax
-must be compiled by ICK. A local success is diagnostic only: it does not certify
+Run tests/run-ick.grease through the pinned current Grease executable with an
+absolute qualified ICK driver, a new output directory, and its declared runtime
+flags. The native-icky workflow uses the shared ICK host producer pinned to
+c61e448251744a2f40ad743ebef1a027bdcd2f9d and the shared build-toolchain contract.
+It runs the unchanged-source positive fixture and separate stale-generation,
+multiple-access-mode, and masked-unlink-error mutations. The fixture also grows
+the descriptor registry beyond its initial capacity, checks exclusive create,
+missing arguments, permission ranges, and symbolic-link refusal.
+
+The earlier FastChat host compiler artifact at 37589849631 / 11468256648 accepts
+the assignment arrow but rejects multiplication U+00D7. It is therefore not the
+producer for this candidate. No glyph lowering or stock-C fallback is allowed.
+
+The runner has no stock compiler fallback and its glyph syntax must be compiled
+by ICK. A local success is diagnostic only: it does not certify
 the executable was built from the listed ICK source, prove the Grease language
 surface, the pinned Oils/YSH behavior, a Lua adapter, Android, or a physical
 device. Independent ai-ci toolchain provenance, exact-head compilation,
