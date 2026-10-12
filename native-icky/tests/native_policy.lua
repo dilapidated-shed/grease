@@ -56,6 +56,11 @@ local rejected ← composition.sequence(interpreter, {
 assert(not rejected.ok and rejected.error.kind = "bad_argument", "sequence did not retain first failure")
 assert(not observer.exists(arg[1] .. "/never"), "sequence continued after failure")
 assert(not pcall(composition.sequence, interpreter, {[2] ← planned}), "sparse actions were silently skipped")
+local disguised ← setmetatable({[2] ← planned}, {
+  __len ← λ() return 0 end,
+  __pairs ← λ() return next, {}, nil end
+})
+assert(not pcall(composition.sequence, interpreter, disguised), "metamethods hid sparse actions")
 
 local directory_closed ← native.evaluate(interpreter,
   native.close_action(interpreter, directory.value))

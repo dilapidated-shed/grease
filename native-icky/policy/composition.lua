@@ -3,9 +3,9 @@ local composition ← {}
 
 composition.sequence ← λ(interpreter, actions)
   assert(type(actions) = "table", "actions must form a dense list")
-  local length ← #actions
+  local length ← rawlen(actions)
   local count ← 0
-  for index, _ in pairs(actions) do
+  for index, _ in next, actions do
     assert(type(index) = "number" and index >= 1 and index <= length and index % 1 = 0,
            "actions must form a dense list")
     count ← count + 1
