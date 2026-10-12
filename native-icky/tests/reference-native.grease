@@ -1,0 +1,31 @@
+#!/usr/bin/env grease
+# This is the pinned working Grease oracle, not the migrated interpreter.
+set -eu -o pipefail
+if (len(ARGV) !== 1) { exit 2 }
+var directory = native.openat(native.cwd, ARGV[0], flags=['read-only', 'directory'])
+if (not directory.ok) { exit 3 }
+var created = native.openat(directory.value, 'entry', flags=['read-write', 'create', 'exclusive'], mode=384)
+if (not created.ok) { exit 4 }
+test -f "$[ARGV[0]]/entry"
+printf 'created\t%s\n' "$[created.ok]"
+var duplicate = native.openat(directory.value, 'entry', flags=['read-write', 'create', 'exclusive'], mode=384)
+if (duplicate.ok) { exit 5 }
+printf 'exclusive_error\t%s\n' "$[duplicate.error.number]"
+var closed = native.close(created.value)
+printf 'closed\t%s\n' "$[closed.ok]"
+var reopened = native.openat(directory.value, 'entry')
+if (not reopened.ok) { exit 6 }
+printf 'reopened\t%s\n' "$[reopened.ok]"
+var reclosed = native.close(reopened.value)
+printf 'reclosed\t%s\n' "$[reclosed.ok]"
+var missing = native.openat(directory.value, 'missing')
+if (missing.ok) { exit 7 }
+printf 'missing_error\t%s\n' "$[missing.error.number]"
+var removed = native.unlinkat(directory.value, 'entry')
+printf 'removed\t%s\n' "$[removed.ok]"
+test ! -e "$[ARGV[0]]/entry"
+var absent = native.unlinkat(directory.value, 'entry')
+if (absent.ok) { exit 8 }
+printf 'second_unlink_error\t%s\n' "$[absent.error.number]"
+var directory_closed = native.close(directory.value)
+printf 'directory_closed\t%s\n' "$[directory_closed.ok]"

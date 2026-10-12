@@ -1,0 +1,141 @@
+name: Native Icky C and Lua migration
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  native-producer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Exact producer configuration
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Pinned current ICK producer
+        uses: isomorphisms/ai-ci/ick-host@015cc7901ae0b3ad262b476f24e129b53c56db95
+      - name: Bind the actual compiler source
+        run: |
+          git -C .ick-host-source rev-parse HEAD > "$RUNNER_TEMP/ick-host-stage/ick.source"
+          git -C .ick-host-source/gcc rev-parse HEAD > "$RUNNER_TEMP/ick-host-stage/gcc.source"
+      - name: Preserve the exact qualified producer for independent replay
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-icky-host-compiler-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/ick-host-stage/
+          if-no-files-found: error
+          retention-days: 30
+  native-actions:
+    needs: native-producer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ASAN_OPTIONS: detect_leaks=0
+      ICK_DRIVER: ${{ github.workspace }}/ick-host-stage/bin/gcc
+    steps:
+      - name: Exact candidate source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Same-run qualified compiler
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: native-icky-host-compiler-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ick-host-stage
+      - name: Restore and inspect the relocated producer
+        run: |
+          chmod +x ick-host-stage/bin/gcc ick-host-stage/libexec/gcc/x86_64-pc-linux-gnu/17.0.0/cc1 ick-host-stage/libexec/gcc/x86_64-pc-linux-gnu/17.0.0/collect2
+          echo 'c61e448251744a2f40ad743ebef1a027bdcd2f9d' | cmp - ick-host-stage/ick.source
+          echo '6294f1d9e7536e5ffcde09d1528c918d63abfef5' | cmp - ick-host-stage/gcc.source
+          sudo apt-get update
+          sudo apt-get install -y libgmp10 libmpfr6 libmpc3 libisl23 libzstd1 ripgrep
+          "$ICK_DRIVER" -v
+      - name: Shared build-toolchain contract
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/ai-ci
+          ref: 01608a2493fa409463f70e8fbfd8a123ef59ee85
+          path: native-contract
+          persist-credentials: false
+      - name: Execute shared contract with ICK
+        run: |
+          "$ICK_DRIVER" -fno-link-libatomic -std=c17 -O2 native-contract/src/aici.c -o "$RUNNER_TEMP/native-contract"
+          "$RUNNER_TEMP/native-contract" verify native-contract/contracts/build-toolchain-v0.contract.tsv native-icky
+      - name: Pinned reference Grease executable
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          repository: dilapidated-shed/grease
+          run-id: 37478624499
+          artifact-ids: 11419719229
+          github-token: ${{ github.token }}
+          merge-multiple: true
+          path: grease-reference
+      - name: Verify and enable reference executable
+        run: |
+          echo '7e31cd05b7a9d8fb2a4a9e003a7f3fcb0159138506d17f0fb28da8cbe22aa85c  grease-reference/_bin/cxx-asan/ysh' | sha256sum -c -
+          chmod +x grease-reference/_bin/cxx-asan/ysh
+      - name: Execute candidate C and hostile mutations through Grease
+        run: >
+          grease-reference/_bin/cxx-asan/ysh native-icky/tests/run-ick.grease
+          "$ICK_DRIVER" "$RUNNER_TEMP/native-icky-c" -fno-link-libatomic
+      - name: Qualified modified-Lua source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/lua
+          ref: 87306483cec50f8c750a22dda1d0742246fad756
+          path: modified-lua
+          persist-credentials: false
+      - name: Same-version ordinary-Lua counterfactual
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/lua
+          ref: 0b29f408433e92953cc72b1d3e06c7ac8139e439
+          path: stock-lua
+          persist-credentials: false
+      - name: Independent modified-Lua qualifier
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/flexible-pipes
+          ref: 5caaba31256bfb424638f8a3d4d554c56fa9a970
+          path: lua-qualifier
+          persist-credentials: false
+      - name: Exact retained ICK runtime producer
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          repository: isomorphisms/fastchat
+          run-id: 37589849631
+          artifact-ids: 11468256648
+          github-token: ${{ github.token }}
+          merge-multiple: true
+          path: runtime-compiler
+      - name: Restore runtime compiler modes and dependencies
+        run: |
+          chmod +x runtime-compiler/compiler/build/gcc/xgcc runtime-compiler/compiler/build/gcc/cc1 runtime-compiler/compiler/build/gcc/collect2
+          sudo apt-get install -y libisl23 libzstd1 ripgrep
+      - name: Execute Lua ownership, three-way parity and hostile tests after C acceptance
+        run: >
+          grease-reference/_bin/cxx-asan/ysh native-icky/tests/run-lua.grease
+          "$ICK_DRIVER"
+          "$GITHUB_WORKSPACE/modified-lua" "$GITHUB_WORKSPACE/stock-lua"
+          "$GITHUB_WORKSPACE/lua-qualifier"
+          "$GITHUB_WORKSPACE/runtime-compiler/compiler/build/gcc/xgcc"
+          "$GITHUB_WORKSPACE/runtime-compiler/compiler/build/gcc"
+          "$GITHUB_WORKSPACE/grease-reference/_bin/cxx-asan/ysh"
+          "$RUNNER_TEMP/native-icky-c" "$RUNNER_TEMP/native-icky-lua"
+          -fno-link-libatomic
+      - name: Preserve candidate source and producer receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-icky-c-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/native-icky-c/
+            ${{ runner.temp }}/native-icky-lua/
+            ick-host-stage/qualification/
+            ick-host-stage/host-runtime*
+          if-no-files-found: error
+          retention-days: 30

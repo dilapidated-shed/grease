@@ -1,0 +1,95 @@
+#!/usr/bin/env grease
+set -eu -o pipefail
+if (len(ARGV) < 9) {
+  echo 'usage: run-lua.grease ICK LUA STOCK_LUA QUALIFIER RUNTIME_ICK RUNTIME_LIBEXEC REFERENCE_GREASE C_RECEIPTS NEW_OUTPUT [runtime flags...]'
+  exit 2
+}
+var compiler = ARGV[0]
+var lua = ARGV[1]
+var stock = ARGV[2]
+var qualifier = ARGV[3]
+var runtime_compiler = ARGV[4]
+var runtime_support = ARGV[5]
+var reference = ARGV[6]
+var c_receipts = ARGV[7]
+var output = ARGV[8]
+var flags = ARGV[9:]
+var directory = $(dirname "$0")
+var source = $(realpath "$directory/..")
+var revision = $(git -C "$source/.." rev-parse HEAD)
+test -z "$(git -C "$source/.." status --porcelain -- native-icky)"
+var required_c_revision = $(printf 'source_revision\t%s' "$revision")
+rg -Fx "$required_c_revision" "$c_receipts/results.tsv"
+rg -q '^status\tPASS$' "$c_receipts/results.tsv"
+test ! -e "$output"
+mkdir -p "$output"
+test "$(git -C "$qualifier" rev-parse HEAD)" = 5caaba31256bfb424638f8a3d4d554c56fa9a970
+test -z "$(git -C "$qualifier" status --porcelain)"
+test "$(git -C "$stock" rev-parse HEAD)" = 0b29f408433e92953cc72b1d3e06c7ac8139e439
+test -z "$(git -C "$stock" status --porcelain)"
+var source_pin = $(git -C "$source/.." rev-parse HEAD:source)
+"$reference" --version > "$output/reference-version.txt"
+rg -Fx "git commit = $source_pin" "$output/reference-version.txt"
+"$reference" "$qualifier/scripts/qualify-icky-lua.grease" "$lua" "$runtime_compiler" "$runtime_support" "$output/runtime"
+var runtime_object = "$output/runtime/icky-lua.o"
+var runtime_before = $(sha256sum "$runtime_object")
+var policy = "$source/policy/composition.lua"
+var options = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-Wpedantic', "-I$source", "-I$lua"]
+var sources = ["$source/grease_actions.c", "$source/grease_lua.c", "$source/tests/lua_native_test.c"]
+var link_flags = ['-Wl,--unique=.rodata.grease_policy', '-lm', '-ldl']
+
+"$compiler" @options @flags "$source/grease_actions.c" "$source/tests/native_parity.c" -o "$output/c-parity"
+mkdir "$output/c-case" "$output/reference-case" "$output/lua-case"
+"$output/c-parity" "$output/c-case" > "$output/c-parity.tsv"
+"$reference" "$source/tests/reference-native.grease" "$output/reference-case" > "$output/reference-parity.tsv"
+test ! -e "$output/c-case/entry"
+cmp "$output/c-parity.tsv" "$output/reference-parity.tsv"
+"$compiler" @options @flags "-DGREASE_POLICY_SOURCE=\"$policy\"" @sources "$runtime_object" @link_flags -o "$output/lua-native"
+"$output/lua-native" "$source/tests/native_policy.lua" "$output/lua-case" > "$output/lua-parity.tsv" 2> "$output/lua.stderr"
+cmp "$output/lua-parity.tsv" "$output/reference-parity.tsv"
+test ! -e "$output/lua-case/entry"
+test ! -e "$output/lua-case/never"
+objcopy --dump-section .rodata.grease_policy="$output/embedded-policy.lua" "$output/lua-native"
+cmp "$policy" "$output/embedded-policy.lua"
+test "$runtime_before" = "$(sha256sum "$runtime_object")"
+readelf -d "$output/lua-native" > "$output/linked-libraries.txt"
+if rg -iq 'NEEDED.*lua' "$output/linked-libraries.txt" {
+  echo 'FAIL unexpected dynamic Lua library' >&2
+  exit 1
+}
+
+# Replace only the linked runtime with actual same-version ordinary Lua.
+"$runtime_compiler" "-B$runtime_support/" -B/usr/lib/gcc/x86_64-linux-gnu/13/ -isystem /usr/lib/gcc/x86_64-linux-gnu/13/include -fno-use-linker-plugin -std=c11 -O2 -DMAKE_LIB -DLUA_USE_POSIX "-I$stock" -c "$stock/onelua.c" -o "$output/stock-lua.o"
+"$compiler" @options @flags "-DGREASE_POLICY_SOURCE=\"$policy\"" @sources "$output/stock-lua.o" @link_flags -o "$output/stock-consumer"
+if "$output/stock-consumer" "$source/tests/native_policy.lua" "$output/lua-case" > "$output/stock.stdout" 2> "$output/stock.stderr" {
+  echo 'FAIL ordinary Lua admitted the modified-Lua policy' >&2
+  exit 1
+}
+rg -F 'POLICY_LOAD_FAILED:' "$output/stock.stderr"
+
+proc rejected_bridge (name, expression, diagnostic) {
+  sed "$expression" "$source/grease_lua.c" > "$output/$name.c"
+  if cmp -s "$source/grease_lua.c" "$output/$name.c" { exit 1 }
+  "$compiler" @options @flags "-DGREASE_POLICY_SOURCE=\"$policy\"" "$source/grease_actions.c" "$output/$name.c" "$source/tests/lua_native_test.c" "$runtime_object" @link_flags -o "$output/$name"
+  mkdir "$output/$name-case"
+  if "$output/$name" "$source/tests/native_policy.lua" "$output/$name-case" > "$output/$name.stdout" 2> "$output/$name.stderr" {
+    echo "FAIL broken Lua bridge $name was accepted" >&2
+    exit 1
+  }
+  rg -F "$diagnostic" "$output/$name.stderr"
+}
+rejected_bridge foreign-handle 's/handle->owner == owner/handle->owner != NULL/' 'foreign handle admitted'
+rejected_bridge foreign-action 's/action->owner == owner/action->owner != NULL/' 'foreign action admitted'
+rejected_bridge missing-disposal 's/grease_native_interpreter_free(owner->interpreter);/(void)owner->interpreter;/' 'interpreter collection leaked a descriptor'
+
+sed 's/if not result.ok then/if false then/' "$policy" > "$output/continued-sequence.lua"
+"$compiler" @options @flags "-DGREASE_POLICY_SOURCE=\"$output/continued-sequence.lua\"" @sources "$runtime_object" @link_flags -o "$output/continued-sequence"
+mkdir "$output/continued-sequence-case"
+if "$output/continued-sequence" "$source/tests/native_policy.lua" "$output/continued-sequence-case" > "$output/continued-sequence.stdout" 2> "$output/continued-sequence.stderr" {
+  echo 'FAIL Lua sequence continued after a failed action' >&2
+  exit 1
+}
+rg -F 'sequence did not retain first failure' "$output/continued-sequence.stderr"
+sha256sum "$output/lua-native" "$runtime_object" "$policy" "$output/embedded-policy.lua" "$output/stock-lua.o" "$output/stock-consumer" "$source/grease_lua.c" > "$output/source-and-binary.sha256"
+printf 'key\tvalue\nsource_revision\t%s\nc_reference_parity\tPASS\nlua_reference_parity\tPASS\nopaque_ownership\tPASS\nfirst_failure_sequence\tPASS\ncontext_cleanup\tPASS\nstock_runtime_rejected\tPASS\nbridge_mutations\tREJECTED\npolicy_mutation\tREJECTED\nstatus\tPASS\nandroid\tNOT_RUN\nphysical_device\tNOT_RUN\n' "$revision" > "$output/results.tsv"
+echo 'PASS native Icky C and modified-Lua composition match the pinned Grease scenario'
