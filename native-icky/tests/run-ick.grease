@@ -10,6 +10,7 @@ var output = ARGV[1]
 var flags = ARGV[2:]
 var script_directory = $(dirname "$0")
 var source = $(realpath "$script_directory/..")
+test -z "$(git -C "$source/.." status --porcelain -- native-icky)"
 test "$compiler" = "$(realpath "$compiler")"
 test -x "$compiler"
 test ! -e "$output"
@@ -38,7 +39,11 @@ printf 'key\tvalue\nsource_revision\t%s\nc_fixture\tPASS\n' "$(git -C "$source/.
 reject_mutation stale-generation 's/slot->generation ← slot->generation + 1;/slot->generation ← slot->generation;/' 'FAIL: slot reuse does not revive stale handle'
 reject_mutation multiple-access 's/if (access_count != 1)/if (access_count == SIZE_MAX)/' 'FAIL: two access modes are rejected before libc'
 reject_mutation masked-unlink-error 's/if (unlinkat(directory_fd, action->path, flags) < 0)/if (unlinkat(directory_fd, action->path, flags) == INT_MIN)/' 'FAIL: second unlink reports'
-sha256sum "$compiler" "$output/positive" "$source/grease_actions.c" "$source/grease_actions.h" "$source/tests/grease_actions_test.c" > "$output/source-and-binary.sha256"
+var frontend = $("$compiler" -print-prog-name=cc1)
+var link_driver = $("$compiler" -print-prog-name=collect2)
+test -x "$frontend"
+test -x "$link_driver"
+sha256sum "$compiler" "$frontend" "$link_driver" "$output/positive" "$source/grease_actions.c" "$source/grease_actions.h" "$source/tests/grease_actions_test.c" > "$output/source-and-binary.sha256"
 "$compiler" -v > "$output/compiler.stdout" 2> "$output/compiler.stderr"
 printf 'status\tPASS\nreference_parity\tNOT_RUN\nlua\tNOT_RUN\nandroid\tNOT_RUN\nphysical_device\tNOT_RUN\n' >> "$output/results.tsv"
 echo 'PASS Icky C actions and three targeted broken implementations'

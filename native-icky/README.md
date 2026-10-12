@@ -27,8 +27,8 @@ The compiler's build/provenance at this candidate revision is not yet accepted.
 Second-pass Lua is fixed to the modified isomorphisms/lua at
 87306483cec50f8c750a22dda1d0742246fad756, not ordinary Lua.
 That repository has its own symbolic assignment/equality/arithmetic tests.
-Lua implementation begins only after this C feature set has independent
-ICK compilation and behavioral acceptance.
+C execution acceptance is a mandatory predecessor of the Lua execution gate.
+The prepared binding and policy remain candidates until those gates pass.
 
 The separate dilapidated-shed/icky Idris2 parser preserves glyphs and source
 order, but does NOT parse YSH or assign Grease meaning. This C action interpreter
@@ -40,7 +40,7 @@ does not claim parser integration.
        -> named Icky C evaluation function
        -> libc or Bionic action
        -> explicit result and owned opaque resource
-       -> future Icky Lua policy / sequencing
+       -> Icky Lua policy / sequencing candidate
 
 Each action is constructed as a value without effects. Evaluation selects a
 named action and returns an explicit success or failure. The C interpreter
@@ -51,9 +51,20 @@ results; it must not recreate the native implementation or forge receipts.
 This first slice implements openat, close, and unlinkat. Stable named flags
 are translated to host flags. The borrowed cwd handle cannot be closed.
 The generation-bearing C token prevents stale descriptors from acquiring new
-resources after slot reuse. A future Lua binding must hold handles in userdata
-rather than exposing these C tokens to scripts, and attach their interpreter
-identity so cross-interpreter tokens cannot be confused.
+resources after slot reuse. The Lua binding holds tokens in protected userdata
+and retains the owning interpreter. Actions also retain their interpreter and
+copy references to immutable path/flag strings, so later mutation of the input
+flag table cannot change an already constructed action. Neither tokens nor raw
+descriptors are exposed to scripts. Cross-interpreter handles/actions and
+zero-containing text are rejected before the native interpreter is invoked.
+
+Lua's composition.sequence validates a dense action list, evaluates each
+action through the named C interpreter, and returns the first failure without
+running subsequent actions. The demonstration driver loads only Lua's base
+library; it does not expose debug registry mutation or native module loading.
+This is a controlled migration fixture, not a security sandbox or a shell.
+Closing handles remains an explicit C action. Collection of an interpreter
+closes any remaining descriptors; live handles/actions retain that interpreter.
 
 Error outcomes are separated into invalid arguments, invalid handles, borrowed
 handles, and libc failures with captured errno. No raw fd is returned. Mapping,
@@ -81,6 +92,21 @@ multiple-access-mode, and masked-unlink-error mutations. The fixture also grows
 the descriptor registry beyond its initial capacity, checks exclusive create,
 missing arguments, permission ranges, and symbolic-link refusal.
 
+After that exact-head C gate, tests/run-lua.grease reuses the unchanged shared
+modified-Lua qualifier, links its already checked runtime object, verifies raw
+embedded policy bytes, and compares one filesystem transcript between the C
+pass, the Lua-composed pass, and the pinned working Grease. It tests effect-free
+construction, stale handles, opaque userdata, foreign ownership, native text,
+first-failure sequencing, retained context lifetime, and descriptor cleanup.
+Separate bridge mutants remove handle/action ownership and native disposal;
+a policy mutant continues after failure. A real same-version ordinary-Lua
+runtime is linked into the same consumer and must reject the raw policy.
+
+This comparison is limited to valid open/close/unlink actions and native errno
+results. It does not claim Grease parser, exception, word expansion, or public
+object compatibility. Grease's invalid-argument exceptions and this candidate's
+explicit failure results remain distinct.
+
 The earlier FastChat host compiler artifact at 37589849631 / 11468256648 accepts
 the assignment arrow but rejects multiplication U+00D7. It is therefore not the
 producer for this candidate. No glyph lowering or stock-C fallback is allowed.
@@ -91,4 +117,6 @@ the executable was built from the listed ICK source, prove the Grease language
 surface, the pinned Oils/YSH behavior, a Lua adapter, Android, or a physical
 device. Independent ai-ci toolchain provenance, exact-head compilation,
 positive and known-bad executable fixtures, and comparison against pinned
-Grease remain pending. This candidate is not merge-ready.
+Grease are recorded by the candidate workflow. A pending run remains pending.
+Independent Flexible Pipes job admission is still separate. This candidate is
+not merge-ready.

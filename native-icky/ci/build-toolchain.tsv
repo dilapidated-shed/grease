@@ -1,2 +1,4 @@
 build_id	target	toolchain	ick_revision	ick_status	ick_evidence
 native-actions	linux-x86_64	ick	c61e448251744a2f40ad743ebef1a027bdcd2f9d	qualified	https://github.com/isomorphisms/ai-ci/blob/015cc7901ae0b3ad262b476f24e129b53c56db95/ick-host/Makefile
+native-lua-binding	linux-x86_64	ick	c61e448251744a2f40ad743ebef1a027bdcd2f9d	qualified	https://github.com/isomorphisms/ai-ci/blob/015cc7901ae0b3ad262b476f24e129b53c56db95/ick-host/Makefile
+modified-lua-runtime	linux-x86_64	ick	515c0f29fe6e2e96e10495fbaf25da93532e7722	qualified	https://github.com/isomorphisms/flexible-pipes/blob/5caaba31256bfb424638f8a3d4d554c56fa9a970/scripts/qualify-icky-lua.grease
