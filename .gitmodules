@@ -1,4 +1,4 @@
 [submodule "source"]
 	path = source
-	url = https://github.com/isomorphisms/oils.git
+	url = https://github.com/dilapidated-shed/oils.git
 	branch = grease/main

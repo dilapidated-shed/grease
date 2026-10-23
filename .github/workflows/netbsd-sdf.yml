@@ -39,7 +39,7 @@ jobs:
       - name: Check out pinned Oils source as a standalone worktree
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          repository: isomorphisms/oils
+          repository: dilapidated-shed/oils
           ref: ${{ steps.source_pin.outputs.revision }}
           path: source-worktree
           persist-credentials: false
@@ -104,6 +104,15 @@ jobs:
 
             "$package/greasecpp" -c 'echo greasecpp-wrapper-ready'
             "$package/grease" -c 'echo grease-default-ready'
+
+            # Test the exact alias regression that prompted this SDF update.
+            cat > "$work/alias-smoke.ysh" <<'YSH'
+            shopt -s ysh:all
+            alias ll='echo alias-ok'
+            ll
+            unalias ll
+            YSH
+            test "$("$package/grease" "$work/alias-smoke.ysh")" = alias-ok
             test "$(readlink "$package/grease")" = greasecpp
 
             {
@@ -113,6 +122,7 @@ jobs:
               printf 'grease_repository_revision=%s\n' '${{ github.event.pull_request.head.sha || github.sha }}'
               printf 'greasecpp_implementation=Oils/MyCPP C++\n'
               printf 'grease_default=greasecpp\n'
+              printf 'alias_ysh_all=PASS\n'
             } > "$package/receipt.txt"
 
       - name: Archive NetBSD package
@@ -166,6 +176,7 @@ jobs:
             printf '%s\n' 'Target: NetBSD 9.3 amd64'
             printf 'Artifact SHA-256: %s\n\n' "$ARTIFACT_SHA256"
             printf '%s\n' 'The binary was compiled and smoke-tested inside the NetBSD 9.3 VM job above.'
+            printf '%s\n' 'YSH alias definition, expansion and unalias passed with ysh:all enabled.'
           } > _/release-notes.txt
 
           if gh release view "$tag" >/dev/null 2>&1; then
