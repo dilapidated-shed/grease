@@ -86,6 +86,9 @@ jobs:
           path: |
             source-worktree/_release/oils-for-unix.tar
             source-worktree/_tmp/soil/commit-hash.txt
+            source-worktree/_tmp/soil/INDEX.tsv
+            source-worktree/_tmp/soil/image-layers.tsv
+            source-worktree/_tmp/soil/logs/build-times.txt
             ${{ runner.temp }}/grease-native/generated-source.sha256
             ${{ runner.temp }}/grease-native/packaging-commit.txt
             ${{ runner.temp }}/grease-native/source-commit.txt

@@ -11,7 +11,8 @@ if test -e "$evidence" { echo 'FAIL reused native source build' >&2; exit 2 }
 var expected = $(git -C "$repository" rev-parse HEAD:source)
 if ($(git -C "$upstream" rev-parse HEAD) !== expected) { echo 'FAIL source worktree pin' >&2; exit 1 }
 if ($(cat "$upstream/_tmp/soil/commit-hash.txt") !== expected) { echo 'FAIL container source pin' >&2; exit 1 }
-"$upstream/soil/host-shim.sh" did-all-succeed cpp-tarball
+cd "$upstream"
+./soil/host-shim.sh did-all-succeed cpp-tarball
 mkdir -p "$evidence"
 test -s "$upstream/_release/oils-for-unix.tar"
 cp "$upstream/_release/oils-for-unix.tar" "$evidence/generated-source.tar"

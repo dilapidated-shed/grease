@@ -20,3 +20,12 @@ The first attempt to source configure directly in YSH correctly refused its
 POSIX `readonly` builtin. No runtime was built from that attempt. Calling the
 maintained configure program through its own interface preserves its language
 boundary; it is not counted as Grease execution or target acceptance.
+
+The first hosted continuation at 38ddc14b completes all inherited source
+generation tasks, including C++ smoke, tar generation and native build timing.
+Its outer bootstrap then fails because host-shim was invoked outside its source
+working directory. Running that retained tool in its required directory repairs
+the wrapper contract; no generated source or success allowance changes. The
+source tar and exact commit survive in run 41252620342, artifact 13061484400,
+ZIP SHA-256 694d664b7f7888e8cd30c49a8c966c7f979069835b99b1cee162c8dfbb3a604e.
+Android runtime builds/execution remain pending after that failed run.
