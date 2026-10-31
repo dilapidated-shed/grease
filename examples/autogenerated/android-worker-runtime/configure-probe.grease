@@ -1,0 +1,13 @@
+#!/usr/bin/env grease
+set -eu -o pipefail
+if (len(ARGV) !== 2) { echo 'usage: grease configure-probe.grease GENERATED_SOURCE ANDROID_C_COMPILER' >&2; exit 2 }
+var source = ARGV[0]
+var compiler = ARGV[1]
+if (source[0] !== '/' or compiler[0] !== '/') { exit 2 }
+test -x "$compiler"
+cd "$source"
+# The retained configure command is a foreign POSIX tool. Its fast mode emits
+# the native C++ configuration and compile-only libc probes; it omits the
+# legacy OVM sizeof probes which would execute target binaries on this host.
+env _OIL_DEV=1 _OIL_CONFIGURE_TEST='' ./configure --cxx-for-configure "$compiler" \
+  --without-readline --without-systemtap-sdt
