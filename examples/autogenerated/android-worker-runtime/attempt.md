@@ -29,3 +29,11 @@ the wrapper contract; no generated source or success allowance changes. The
 source tar and exact commit survive in run 41252620342, artifact 13061484400,
 ZIP SHA-256 694d664b7f7888e8cd30c49a8c966c7f979069835b99b1cee162c8dfbb3a604e.
 Android runtime builds/execution remain pending after that failed run.
+
+The next head 28a84bb2 passes source generation and bootstrap, but Android SDK
+setup refuses the runner's JDK 11: the pinned command-line tools require JDK 17.
+The continuation selects JDK 17 through the same pinned setup action used by the
+existing ARM recipe. This is a host SDK prerequisite, not application Java code.
+Run 41253417590 therefore provides no target runtime result. Extraction also uses
+`--no-same-owner`, since source archive ownership is not an input to a build and
+the local managed filesystem cannot adopt its container UID.
